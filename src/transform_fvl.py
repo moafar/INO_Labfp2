@@ -208,38 +208,44 @@ def add_derived_metrics(
         cv_column = f"{prefix}_cv"
         skewness_column = f"{prefix}_skewness"
 
-        # Algunos parámetros pueden no tener ecuaciones predictivas.
-        required_lms_columns = {
-            predicted_column,
-            cv_column,
-            skewness_column,
-        }
-
-        if not required_lms_columns.issubset(
-            transformed.columns
-        ):
-            continue
-
         for moment in ["pre", "post"]:
             observed_column = f"{prefix}_{moment}"
 
+            # Sin valor observado no puede calcularse ninguna métrica derivada.
             if observed_column not in transformed.columns:
                 continue
 
-            # Calcula el porcentaje respecto al valor predicho.
-            transformed[
-                f"{prefix}_percent_predicted_{moment}"
-            ] = np.where(
-                transformed[predicted_column].gt(0),
-                (
-                    transformed[observed_column]
-                    / transformed[predicted_column]
+            # El porcentaje predicho solo requiere observado y predicho.
+            if predicted_column in transformed.columns:
+                observed = pd.to_numeric(
+                    transformed[observed_column],
+                    errors="coerce",
                 )
-                * 100.0,
-                np.nan,
-            )
+                predicted = pd.to_numeric(
+                    transformed[predicted_column],
+                    errors="coerce",
+                )
 
-            # Calcula el z-score LMS.
+                transformed[
+                    f"{prefix}_percent_predicted_{moment}"
+                ] = np.where(
+                    predicted.gt(0),
+                    (observed / predicted) * 100.0,
+                    np.nan,
+                )
+
+            # El z-score LMS requiere predicho, CV y skewness.
+            required_lms_columns = {
+                predicted_column,
+                cv_column,
+                skewness_column,
+            }
+
+            if not required_lms_columns.issubset(
+                transformed.columns
+            ):
+                continue
+
             transformed[
                 f"{prefix}_zscore_{moment}"
             ] = calculate_lms_zscore(
