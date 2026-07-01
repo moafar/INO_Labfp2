@@ -6,15 +6,11 @@ from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 
+from src.config.fvl import FVL_SQL_COLUMNS
+
 
 # Parámetros funcionales que se transformarán a formato ancho.
-FVL_PARAMETERS = [
-    "FVC",
-    "FEV1",
-    "FEV1FVC",
-    "PEF",
-    "FEF2575",
-]
+FVL_PARAMETERS = list(FVL_SQL_COLUMNS)
 
 
 # Correspondencia entre tipos de fila y componentes analíticos.

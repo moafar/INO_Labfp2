@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.sqlserver import get_sqlserver_connection
+from src.config.fvl import FVL_SQL_COLUMNS
 
 
 # Define las rutas relativas del proyecto.
@@ -14,9 +15,29 @@ SQL_FILE = PROJECT_ROOT / "sql" / "extract_fvl.sql"
 
 
 def load_sql_query() -> str:
-    """Lee la consulta SQL usada para extraer los datos."""
+    """Lee la consulta SQL e incorpora las columnas FVL configuradas."""
 
-    return SQL_FILE.read_text(encoding="utf-8")
+    query = SQL_FILE.read_text(encoding="utf-8")
+
+    column_lines = []
+
+    for index, column in enumerate(FVL_SQL_COLUMNS):
+        suffix = "," if index < len(FVL_SQL_COLUMNS) - 1 else ""
+        column_lines.append(f"    fv.{column}{suffix}")
+
+    fvl_columns_sql = "\n".join(column_lines)
+
+    marker = "    -- FVL_COLUMNS"
+
+    if marker not in query:
+        raise ValueError(
+            "La consulta SQL no contiene el marcador -- FVL_COLUMNS."
+        )
+
+    return query.replace(
+        marker,
+        fvl_columns_sql,
+    )
 
 
 def extract_fvl(

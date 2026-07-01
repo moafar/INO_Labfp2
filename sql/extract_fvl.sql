@@ -33,14 +33,7 @@ SELECT
     fv.EffortManual,
     fv.PFProtocolStageIndex,
     fv.EffortSelected,
-    fv.FVC,
-    fv.FEV1,
-    fv.FEV1FVC,
-    fv.PEF,
-    fv.FEF2575,
-    fv.FVLATSCodes,
-    fv.TestGradeNLHEP,
-    fv.TestGradeATS
+    -- FVL_COLUMNS
 
 FROM dbo.Patient AS p
 
