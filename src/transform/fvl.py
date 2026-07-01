@@ -150,7 +150,7 @@ def build_fvl_measurements(raw_dataframe: pd.DataFrame) -> pd.DataFrame:
     measurement_columns = [
         "PatVisitID",
         "EffortTypeID",
-        *FVL_PARAMETERS,
+        *FVL_SQL_COLUMNS,
     ]
 
     measurements = raw_dataframe[measurement_columns].copy()
@@ -193,7 +193,7 @@ def build_fvl_measurements(raw_dataframe: pd.DataFrame) -> pd.DataFrame:
     # Lleva los parámetros a formato largo.
     long_dataframe = measurements.melt(
         id_vars=["PatVisitID", "component"],
-        value_vars=FVL_PARAMETERS,
+        value_vars=FVL_SQL_COLUMNS,
         var_name="parameter",
         value_name="value",
     )
@@ -332,7 +332,7 @@ def transform_fvl(
     required_columns = [
         *VISIT_COLUMNS,
         "EffortTypeID",
-        *FVL_PARAMETERS,
+        *FVL_SQL_COLUMNS,
     ]
 
     validate_columns(
