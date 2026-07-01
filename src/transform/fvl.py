@@ -218,6 +218,7 @@ def add_derived_metrics(
     """Añade porcentajes predichos y z-scores pre y post."""
 
     transformed = dataframe.copy()
+    derived_columns: dict[str, pd.Series] = {}
 
     for parameter in FVL_PARAMETERS:
         prefix = parameter.lower()
@@ -229,30 +230,32 @@ def add_derived_metrics(
         for moment in ["pre", "post"]:
             observed_column = f"{prefix}_{moment}"
 
-            # Sin valor observado no puede calcularse ninguna métrica derivada.
             if observed_column not in transformed.columns:
                 continue
 
-            # El porcentaje predicho solo requiere observado y predicho.
+            observed = pd.to_numeric(
+                transformed[observed_column],
+                errors="coerce",
+            )
+
             if predicted_column in transformed.columns:
-                observed = pd.to_numeric(
-                    transformed[observed_column],
-                    errors="coerce",
-                )
                 predicted = pd.to_numeric(
                     transformed[predicted_column],
                     errors="coerce",
                 )
 
-                transformed[
+                derived_columns[
                     f"{prefix}_percent_predicted_{moment}"
-                ] = np.where(
-                    predicted.gt(0),
-                    (observed / predicted) * 100.0,
-                    np.nan,
+                ] = pd.Series(
+                    np.where(
+                        predicted.gt(0),
+                        (observed / predicted) * 100.0,
+                        np.nan,
+                    ),
+                    index=transformed.index,
+                    dtype="float64",
                 )
 
-            # El z-score LMS requiere predicho, CV y skewness.
             required_lms_columns = {
                 predicted_column,
                 cv_column,
@@ -264,14 +267,25 @@ def add_derived_metrics(
             ):
                 continue
 
-            transformed[
+            derived_columns[
                 f"{prefix}_zscore_{moment}"
             ] = calculate_lms_zscore(
-                observed=transformed[observed_column],
+                observed=observed,
                 predicted=transformed[predicted_column],
                 coefficient_variation=transformed[cv_column],
                 skewness=transformed[skewness_column],
             )
+
+    if derived_columns:
+        derived_dataframe = pd.DataFrame(
+            derived_columns,
+            index=transformed.index,
+        )
+
+        transformed = pd.concat(
+            [transformed, derived_dataframe],
+            axis=1,
+        )
 
     return transformed
 
