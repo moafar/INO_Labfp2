@@ -1,0 +1,62 @@
+variable_funcional,unidad_funcional,campo_sql_candidato,tipo_match,validado,observaciones,clasificacion_base
+Back Extrap Vol,L,VolExtrap,alias_explicito,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+Expiratory Time,sec,ExpTime,alias_explicito,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 10%,L/sec,FEF10,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 200-1200,L/sec,FEF2001200,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 25%,L/sec,FEF25,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 25-75%,L/sec,FEF2575,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 40%,L/sec,FEF40,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 50%,L/sec,FEF50,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 60%,L/sec,FEF60,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 70%,L/sec,FEF70,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 75%,L/sec,FEF75,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 75-85%,L/sec,FEF7585,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 80%,L/sec,FEF80,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 85%,L/sec,FEF85,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF 90%,L/sec,FEF90,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF Max,L/sec,FEFMax,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF Max/FEV6,%,FEFMaxFEV6,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF Max/FVC,%,FEFMaxFVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF50%/FIF50%,%,FEF50FIF50,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF50/FVC,%,FEF50FVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEF75/FVC,%,FEF75FVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FET 25-75%,sec,FET2575,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV0.5,L,FEV05,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV0.5/FEV6,%,FEV05FEV6,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV0.5/FVC,%,FEV05FVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV0.75,L,FEV075,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV1,L,FEV1,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV1/FEV6,%,FEV1FEV6,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV1/FVC,%,FEV1FVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV1/SVC,%,FEV1SVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV10,L,FEV10,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV2,L,FEV2,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV2/FEV6,%,FEV2FEV6,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV2/FVC,%,FEV2FVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV3,L,FEV3,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV3/FEV6,%,FEV3FEV6,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV3/FVC,%,FEV3FVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV6,L,FEV6,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV6/FVC,%,FEV6FVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FEV7,L,FEV7,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FIF 25%,L/sec,FIF25,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FIF 25-75%,L/sec,FIF2575,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FIF 50%,L/sec,FIF50,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FIF 75%,L/sec,FIF75,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FIF Max,L/sec,FIFMax,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FIV1,L,FIV1,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FIV1/FIVC,%,FIV1FIVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FIVC,L,FIVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FVC,L,FVC,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+FVC/Mean Transit,,FVCMeanTr,alias_explicito,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+M/P 30%,,MP30,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+MMET,L^2/sec,MMET,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+PAlv Peak,cmH2O,PAlvPeak,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+PEF,L/min,PEF,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+TestGrade(ATS),,TestGradeATS,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+TestGrade(NLHEP),,TestGradeNLHEP,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+Time To FEFmax,sec,ToFEFMax,alias_explicito,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+VMax60,TLC/sec,VMax60,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+VMax70,TLC/sec,VMax70,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+VMax80,TLC/sec,VMax80,normalizacion_exacta,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa
+Vol @ Palv Peak,L,VolPAlvPk,alias_explicito,True,Correspondencia nominal validada contra el esquema físico de dbo.FVLData. No valida aún selección por EffortTypeID ni cálculo del conjunto PF.,directa

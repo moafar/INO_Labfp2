@@ -1,0 +1,60 @@
+# src/extract_fvl.py
+"""Extrae datos de espirometría desde SQL Server."""
+
+from pathlib import Path
+
+import pandas as pd
+
+from sqlserver import get_sqlserver_connection
+
+
+# Define las rutas relativas del proyecto.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SQL_FILE = PROJECT_ROOT / "sql" / "extract_fvl.sql"
+
+
+def load_sql_query() -> str:
+    """Lee la consulta SQL usada para extraer los datos."""
+
+    return SQL_FILE.read_text(encoding="utf-8")
+
+
+def extract_fvl(
+    start_date: str,
+    end_date: str,
+) -> pd.DataFrame:
+    """Extrae resultados entre dos fechas."""
+
+    query = load_sql_query()
+
+    # Los parámetros reemplazan los signos de interrogación de la consulta.
+    params = [
+        start_date,
+        end_date,
+    ]
+
+    with get_sqlserver_connection() as connection:
+        dataframe = pd.read_sql_query(
+            sql=query,
+            con=connection,
+            params=params,
+        )
+
+    return dataframe
+
+
+def main() -> None:
+    """Ejecuta una extracción pequeña de prueba."""
+
+    dataframe = extract_fvl(
+        start_date="2025-05-14",
+        end_date="2025-05-15",
+    )
+
+    print(f"Filas extraídas: {len(dataframe):,}")
+    print(f"Columnas extraídas: {len(dataframe.columns):,}")
+    print(dataframe.head())
+
+
+if __name__ == "__main__":
+    main()
