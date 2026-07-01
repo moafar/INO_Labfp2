@@ -81,6 +81,17 @@ FVL_SQL_COLUMNS = tuple(
     FVL_MAPPING["campo_sql_candidato"].tolist()
 )
 
+FVL_CATEGORICAL_COLUMNS = (
+    "TestGradeATS",
+    "TestGradeNLHEP",
+)
+
+FVL_NUMERIC_COLUMNS = tuple(
+    column
+    for column in FVL_SQL_COLUMNS
+    if column not in FVL_CATEGORICAL_COLUMNS
+)
+
 FVL_FUNCTIONAL_TO_SQL = dict(
     zip(
         FVL_MAPPING["variable_funcional"],
