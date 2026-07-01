@@ -169,6 +169,29 @@ def build_fvl_measurements(raw_dataframe: pd.DataFrame) -> pd.DataFrame:
         "EffortTypeID"
     ].map(EFFORT_TYPE_COMPONENTS)
 
+    # Verifica que cada visita tenga como máximo una fila por componente.
+    duplicate_mask = measurements.duplicated(
+        subset=["PatVisitID", "component"],
+        keep=False,
+    )
+
+    if duplicate_mask.any():
+        duplicate_rows = (
+            measurements.loc[
+                duplicate_mask,
+                ["PatVisitID", "EffortTypeID", "component"],
+            ]
+            .sort_values(
+                by=["PatVisitID", "EffortTypeID"],
+                kind="stable",
+            )
+        )
+
+        raise ValueError(
+            "Existen varias filas para la misma visita y componente FVL:\n"
+            + duplicate_rows.head(20).to_string(index=False)
+        )
+
     # Lleva los parámetros a formato largo.
     long_dataframe = measurements.melt(
         id_vars=["PatVisitID", "component"],
@@ -178,11 +201,10 @@ def build_fvl_measurements(raw_dataframe: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Construye una columna por parámetro y componente.
-    wide_dataframe = long_dataframe.pivot_table(
+    wide_dataframe = long_dataframe.pivot(
         index="PatVisitID",
         columns=["parameter", "component"],
         values="value",
-        aggfunc="max",
     )
 
     # Convierte el índice multinivel en nombres compatibles con BigQuery.
