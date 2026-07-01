@@ -1,8 +1,8 @@
 # src/test_transform_fvl.py
 """Prueba la extracción y transformación analítica de espirometrías."""
 
-from extract_fvl import extract_fvl
-from transform_fvl import transform_fvl
+from extract.fvl import extract_fvl
+from transform.fvl import transform_fvl
 
 
 def main() -> None:

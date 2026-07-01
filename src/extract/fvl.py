@@ -1,15 +1,15 @@
-# src/extract_fvl.py
+# src/extract/fvl.py
 """Extrae datos de espirometría desde SQL Server."""
 
 from pathlib import Path
 
 import pandas as pd
 
-from sqlserver import get_sqlserver_connection
+from src.sqlserver import get_sqlserver_connection
 
 
 # Define las rutas relativas del proyecto.
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SQL_FILE = PROJECT_ROOT / "sql" / "extract_fvl.sql"
 
 

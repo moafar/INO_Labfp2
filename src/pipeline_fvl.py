@@ -4,8 +4,9 @@
 import argparse
 from pathlib import Path
 
-from extract_fvl import extract_fvl
-from transform_fvl import transform_fvl
+from src.extract.fvl import extract_fvl
+from src.load.parquet import save_parquet
+from src.transform.fvl import transform_fvl
 
 
 # Define la carpeta local de salida temporal.
@@ -40,21 +41,14 @@ def run_pipeline(
         f"{len(analytical_dataframe):,}"
     )
 
-    # Crea la carpeta de salida si todavía no existe.
-    OUTPUT_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
     output_file = (
         OUTPUT_DIR
         / f"fvl_analytics_{start_date}_{end_date}.parquet"
     )
 
-    # Parquet preserva tipos y es adecuado para la carga posterior.
-    analytical_dataframe.to_parquet(
-        output_file,
-        index=False,
+    save_parquet(
+        dataframe=analytical_dataframe,
+        output_file=output_file,
     )
 
     print(f"Archivo generado: {output_file}")
