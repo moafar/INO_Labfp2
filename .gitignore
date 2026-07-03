@@ -1,5 +1,5 @@
 .venv/
-.env
+.env*
 __pycache__/
 *.pyc
 logs/
@@ -7,3 +7,4 @@ logs/
 # Archivos locales y datos generados
 *.deb
 data/processed/
+data/validation/
