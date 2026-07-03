@@ -48,6 +48,7 @@ LEFT JOIN dbo.EffortType AS et
 
 WHERE pv.VisitDateTime >= ?
   AND pv.VisitDateTime < ?
+  AND pv.FVLTest = 1
 
 ORDER BY
     pv.VisitDateTime,
