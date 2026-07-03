@@ -43,18 +43,19 @@ INNER JOIN dbo.PatVisit AS pv
 INNER JOIN dbo.FVLData AS fv
     ON pv.PatVisitID = fv.PatVisitID
 
+INNER JOIN (
+    SELECT DISTINCT PatVisitID
+    FROM dbo.FVLData
+    WHERE EffortTypeID = 0
+) AS visitas_con_maniobras
+    ON visitas_con_maniobras.PatVisitID = pv.PatVisitID
+
 LEFT JOIN dbo.EffortType AS et
     ON fv.EffortTypeID = et.EffortTypeID
 
 WHERE pv.VisitDateTime >= ?
   AND pv.VisitDateTime < ?
   AND pv.FVLTest = 1
-  AND EXISTS (
-      SELECT 1
-      FROM dbo.FVLData AS fv_effort
-      WHERE fv_effort.PatVisitID = pv.PatVisitID
-        AND fv_effort.EffortTypeID = 0
-  )
 
 ORDER BY
     pv.VisitDateTime,
