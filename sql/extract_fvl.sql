@@ -49,6 +49,12 @@ LEFT JOIN dbo.EffortType AS et
 WHERE pv.VisitDateTime >= ?
   AND pv.VisitDateTime < ?
   AND pv.FVLTest = 1
+  AND EXISTS (
+      SELECT 1
+      FROM dbo.FVLData AS fv_effort
+      WHERE fv_effort.PatVisitID = pv.PatVisitID
+        AND fv_effort.EffortTypeID = 0
+  )
 
 ORDER BY
     pv.VisitDateTime,
