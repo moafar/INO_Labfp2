@@ -211,6 +211,24 @@ def build_fvl_measurements(raw_dataframe: pd.DataFrame) -> pd.DataFrame:
         for parameter, component in wide_dataframe.columns
     ]
 
+    # Restaura el tipo numérico perdido durante melt y pivot.
+    numeric_columns = [
+        f"{parameter.lower()}_{component}"
+        for parameter in FVL_NUMERIC_COLUMNS
+        for component in EFFORT_TYPE_COMPONENTS.values()
+        if f"{parameter.lower()}_{component}" in wide_dataframe.columns
+    ]
+
+    wide_dataframe[numeric_columns] = wide_dataframe[
+        numeric_columns
+    ].apply(
+        pd.to_numeric,
+        errors="coerce",
+    )
+
+    # Consolida los bloques internos después de la conversión masiva.
+    wide_dataframe = wide_dataframe.copy()
+
     return wide_dataframe.reset_index()
 
 
