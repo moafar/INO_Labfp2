@@ -227,3 +227,31 @@ def test_extractor_returns_only_visits_with_efforts() -> None:
     ]
 
     assert not missing_efforts
+
+
+def test_zscore_uses_sd_formula_when_lms_is_not_available() -> None:
+    """Comprueba fallback por SD cuando LMS no produce z-score."""
+
+    _, analytical_dataframe = _build_sample()
+
+    valid_rows = analytical_dataframe[
+        analytical_dataframe["raw_pre"].notna()
+        & analytical_dataframe["raw_predicted"].notna()
+        & analytical_dataframe["raw_sd"].notna()
+        & analytical_dataframe["raw_sd"].gt(0)
+        & analytical_dataframe["raw_cv"].fillna(0).eq(0)
+        & analytical_dataframe["raw_skewness"].fillna(0).eq(0)
+    ].copy()
+
+    assert not valid_rows.empty
+
+    expected = (
+        valid_rows["raw_pre"]
+        - valid_rows["raw_predicted"]
+    ) / valid_rows["raw_sd"]
+
+    pd.testing.assert_series_equal(
+        valid_rows["raw_zscore_pre"].reset_index(drop=True),
+        expected.reset_index(drop=True),
+        check_names=False,
+    )
