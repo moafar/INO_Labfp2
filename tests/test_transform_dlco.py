@@ -206,3 +206,32 @@ def test_extractor_returns_only_visits_with_efforts() -> None:
     ]
 
     assert not missing_efforts
+
+
+def test_dlva_zscore_uses_sd_formula_when_lms_is_not_available() -> None:
+    """Calcula z-score DL/VA con fórmula por SD si no hay LMS."""
+
+    raw_dataframe, _ = _build_sample()
+    analytical_dataframe = transform_dlco(raw_dataframe)
+
+    assert "dlva_zscore_pre" in analytical_dataframe.columns
+
+    valid_rows = analytical_dataframe[
+        analytical_dataframe["dlva_pre"].notna()
+        & analytical_dataframe["dlva_predicted"].notna()
+        & analytical_dataframe["dlva_sd"].notna()
+        & analytical_dataframe["dlva_sd"].gt(0)
+    ]
+
+    assert not valid_rows.empty
+
+    expected = (
+        valid_rows["dlva_pre"]
+        - valid_rows["dlva_predicted"]
+    ) / valid_rows["dlva_sd"]
+
+    pd.testing.assert_series_equal(
+        valid_rows["dlva_zscore_pre"].reset_index(drop=True),
+        expected.reset_index(drop=True),
+        check_names=False,
+    )

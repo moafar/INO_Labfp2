@@ -265,25 +265,56 @@ def add_derived_metrics(
                     dtype="float64",
                 )
 
+            zscore_column = f"{prefix}_zscore_{moment}"
+            zscore = pd.Series(
+                np.nan,
+                index=transformed.index,
+                dtype="float64",
+            )
+
             required_lms_columns = {
                 predicted_column,
                 cv_column,
                 skewness_column,
             }
 
-            if not required_lms_columns.issubset(
-                transformed.columns
-            ):
-                continue
+            if required_lms_columns.issubset(transformed.columns):
+                zscore = calculate_lms_zscore(
+                    observed=observed,
+                    predicted=transformed[predicted_column],
+                    coefficient_variation=transformed[cv_column],
+                    skewness=transformed[skewness_column],
+                )
 
-            derived_columns[
-                f"{prefix}_zscore_{moment}"
-            ] = calculate_lms_zscore(
-                observed=observed,
-                predicted=transformed[predicted_column],
-                coefficient_variation=transformed[cv_column],
-                skewness=transformed[skewness_column],
-            )
+            sd_column = f"{prefix}_sd"
+
+            if (
+                predicted_column in transformed.columns
+                and sd_column in transformed.columns
+            ):
+                predicted = pd.to_numeric(
+                    transformed[predicted_column],
+                    errors="coerce",
+                )
+                sd = pd.to_numeric(
+                    transformed[sd_column],
+                    errors="coerce",
+                )
+
+                valid_sd_formula = (
+                    zscore.isna()
+                    & observed.notna()
+                    & predicted.notna()
+                    & sd.notna()
+                    & sd.gt(0)
+                )
+
+                zscore.loc[valid_sd_formula] = (
+                    observed.loc[valid_sd_formula]
+                    - predicted.loc[valid_sd_formula]
+                ) / sd.loc[valid_sd_formula]
+
+            derived_columns[zscore_column] = zscore
 
     if derived_columns:
         derived_dataframe = pd.DataFrame(
