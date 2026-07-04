@@ -201,3 +201,29 @@ def test_extractor_returns_only_visits_with_efforts() -> None:
     ]
 
     assert not missing_efforts
+
+
+def test_zscore_uses_sd_formula_when_lms_is_not_available() -> None:
+    """Comprueba fallback por SD cuando LMS no produce z-score."""
+
+    _, analytical_dataframe = _build_sample()
+
+    valid_rows = analytical_dataframe[
+        analytical_dataframe["fefmax_pre"].notna()
+        & analytical_dataframe["fefmax_predicted"].notna()
+        & analytical_dataframe["fefmax_sd"].notna()
+        & analytical_dataframe["fefmax_sd"].gt(0)
+        & analytical_dataframe["fefmax_cv"].fillna(0).eq(0)
+        & analytical_dataframe["fefmax_skewness"].fillna(0).eq(0)
+    ].copy()
+
+    expected = (
+        valid_rows["fefmax_pre"]
+        - valid_rows["fefmax_predicted"]
+    ) / valid_rows["fefmax_sd"]
+
+    pd.testing.assert_series_equal(
+        valid_rows["fefmax_zscore_pre"].reset_index(drop=True),
+        expected.reset_index(drop=True),
+        check_names=False,
+    )
