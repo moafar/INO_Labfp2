@@ -1,5 +1,5 @@
-# tests/test_transform_fvl.py
-"""Pruebas automatizadas de extracción y transformación FVL."""
+# tests/integration/test_transform_fvl.py
+"""Pruebas de integración FVL con SQL Server."""
 
 import pandas as pd
 

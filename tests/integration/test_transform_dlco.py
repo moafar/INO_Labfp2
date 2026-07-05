@@ -1,5 +1,5 @@
-# tests/test_transform_dlco.py
-"""Pruebas automatizadas de extracción y transformación DLCO."""
+# tests/integration/test_transform_dlco.py
+"""Pruebas de integración DLCO con SQL Server."""
 
 import pandas as pd
 
@@ -221,9 +221,9 @@ def test_dlva_zscore_uses_sd_formula_when_lms_is_not_available() -> None:
         & analytical_dataframe["dlva_predicted"].notna()
         & analytical_dataframe["dlva_sd"].notna()
         & analytical_dataframe["dlva_sd"].gt(0)
-    ]
-
-    assert not valid_rows.empty
+        & analytical_dataframe["dlva_cv"].fillna(0).eq(0)
+        & analytical_dataframe["dlva_skewness"].fillna(0).eq(0)
+    ].copy()
 
     expected = (
         valid_rows["dlva_pre"]

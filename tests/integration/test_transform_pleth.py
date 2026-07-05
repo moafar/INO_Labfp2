@@ -1,5 +1,5 @@
-# tests/test_transform_pleth.py
-"""Pruebas automatizadas de extracción y transformación Pleth."""
+# tests/integration/test_transform_pleth.py
+"""Pruebas de integración Pleth con SQL Server."""
 
 import pandas as pd
 

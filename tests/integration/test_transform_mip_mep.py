@@ -1,5 +1,5 @@
-# tests/test_transform_mip_mep.py
-"""Pruebas automatizadas de extracción y transformación MIP/MEP."""
+# tests/integration/test_transform_mip_mep.py
+"""Pruebas de integración MIP/MEP con SQL Server."""
 
 import pandas as pd
 
