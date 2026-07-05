@@ -9,6 +9,8 @@ from src import pipeline_fvl
 from src import pipeline_methacholine
 from src import pipeline_mip_mep
 from src import pipeline_pleth
+from src.load.parquet import save_parquet
+from src.transform.visit_index import build_visit_index
 
 
 PIPELINES: tuple[tuple[str, str, ModuleType], ...] = (
@@ -44,6 +46,22 @@ def run_all_pipelines(start_date: str, end_date: str) -> dict[str, Path]:
 
         outputs[key] = output_file
         print(f"{label} generado: {output_file}")
+
+    visit_index_output = (
+        Path(__file__).resolve().parent.parent
+        / "data"
+        / "processed"
+        / f"visit_index_{start_date}_{end_date}.parquet"
+    )
+
+    print("Iniciando índice de visitas...")
+    visit_index_dataframe = build_visit_index(outputs)
+    save_parquet(
+        dataframe=visit_index_dataframe,
+        output_file=visit_index_output,
+    )
+    outputs["visit_index"] = visit_index_output
+    print(f"Índice de visitas generado: {visit_index_output}")
 
     print("Resumen final:")
     for key, output_file in outputs.items():
