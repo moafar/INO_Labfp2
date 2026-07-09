@@ -5,6 +5,7 @@ import argparse
 from datetime import date, datetime
 from pathlib import Path
 
+import pandas as pd
 from sqlalchemy import text
 
 from src.pipeline_load_staging import STAGING_LOADS, load_component
@@ -83,6 +84,22 @@ def assert_window_not_loaded(
         )
 
 
+def build_parquet_path(
+    component: str,
+    start_date: str,
+    end_date: str,
+) -> Path:
+    """Construye la ruta local esperada para un Parquet."""
+
+    config = STAGING_LOADS[component]
+    filename = config["filename_template"].format(
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    return Path("data") / "processed" / filename
+
+
 def assert_parquet_outputs_exist(
     start_date: str,
     end_date: str,
@@ -93,12 +110,11 @@ def assert_parquet_outputs_exist(
     missing_files: list[Path] = []
 
     for component in components:
-        config = STAGING_LOADS[component]
-        filename = config["filename_template"].format(
+        path = build_parquet_path(
+            component=component,
             start_date=start_date,
             end_date=end_date,
         )
-        path = Path("data") / "processed" / filename
 
         if not path.exists():
             missing_files.append(path)
@@ -108,6 +124,24 @@ def assert_parquet_outputs_exist(
         raise FileNotFoundError(
             "Faltan Parquet esperados para la carga:\n" + missing
         )
+
+
+def parquet_has_rows(
+    component: str,
+    start_date: str,
+    end_date: str,
+) -> bool:
+    """Indica si el Parquet de un componente tiene filas."""
+
+    path = build_parquet_path(
+        component=component,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    dataframe = pd.read_parquet(path, columns=None)
+
+    return len(dataframe) > 0
 
 
 def run_historical_staging(
@@ -163,6 +197,18 @@ def run_historical_staging(
         )
 
         for current_component in components:
+            if not parquet_has_rows(
+                component=current_component,
+                start_date=window_start_text,
+                end_date=window_end_text,
+            ):
+                print(
+                    "Carga omitida por Parquet vacío: "
+                    f"{current_component} | "
+                    f"{window_start_text} a {window_end_text}"
+                )
+                continue
+
             load_component(
                 component=current_component,
                 start_date=window_start_text,
