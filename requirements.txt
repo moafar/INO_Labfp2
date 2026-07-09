@@ -5,3 +5,5 @@ pyarrow
 python-dotenv
 PyYAML
 pytest
+SQLAlchemy
+psycopg2-binary
