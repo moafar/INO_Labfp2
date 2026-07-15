@@ -42,6 +42,8 @@ La capa Parquet se mantiene como punto físico reproducible entre extracción y 
 - Pleth: `src.pipeline_pleth`
 - MIP/MEP: `src.pipeline_mip_mep`
 - Methacholine: `src.pipeline_methacholine`
+- Ergoespirometría: extracción y decodificador binario documentados; pipeline
+  analítico pendiente de definir tras validar los alias provisionales
 - Visit index: `src.pipeline_visit_index`
 - Orquestador: `src.run_all_pipelines`
 - Carga PostgreSQL staging: `src.pipeline_load_staging`
@@ -161,6 +163,9 @@ La capa `core` no forma parte de esta fase.
 
 - FVL, DLCO y Pleth están validados contra informes Breeze.
 - MIP/MEP y Methacholine siguen pendientes de validación clínica.
+- Ergoespirometría tiene documentada la estructura binaria versión 10 y un
+  decodificador validado; los nombres fisiológicos salvo el tiempo siguen
+  marcados como provisionales.
 - Los tests unitarios corren por defecto y la integración SQL Server requiere `--run-sqlserver`.
 - El índice de visitas consolida la cobertura de pruebas por `pat_visit_id`.
 - PostgreSQL `staging` está implementado para cargar Parquet analíticos con auditoría.
