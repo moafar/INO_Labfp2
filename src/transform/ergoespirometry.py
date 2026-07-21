@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import math
 import struct
 from typing import Final
 
@@ -25,13 +26,13 @@ OLE_AUTOMATION_EPOCH: Final = datetime(1899, 12, 30)
 # el descriptor originales se conservan para no convertirlas en hechos.
 SIGNAL_CATALOG: Final = {
     1: ("elapsed_time_s", "confirmed"),
-    11: ("breath_duration_s", "provisional"),
-    10: ("tidal_volume_l", "provisional"),
-    12: ("vo2_ml_min", "provisional"),
-    18: ("heart_rate_bpm", "provisional"),
+    11: ("breath_duration_s", "validated"),
+    10: ("channel_10", "unknown"),
+    12: ("tidal_volume_atps_ml", "validated"),
+    18: ("channel_18", "unknown"),
     20: ("fio2_fraction", "provisional"),
     19: ("feo2_fraction", "provisional"),
-    15: ("ventilation_l_min", "provisional"),
+    15: ("channel_15", "unknown"),
     17: ("fico2_fraction", "provisional"),
     16: ("feco2_fraction", "provisional"),
 }
@@ -253,6 +254,154 @@ def raw_data_to_dataframe(decoded: RawData) -> pd.DataFrame:
         result[column_name] = signal.values
 
     return pd.DataFrame(result)
+
+
+def _finite_float(value: float | int | None) -> float | None:
+    """Normaliza un escalar numérico finito; los ausentes quedan sin valor."""
+
+    if value is None:
+        return None
+
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+
+    return result if math.isfinite(result) else None
+
+
+def respiratory_rate_br_min(
+    breath_duration_s: float | int | None,
+) -> float:
+    """Deriva respiraciones/minuto desde la duración total de una respiración."""
+
+    duration_s = _finite_float(breath_duration_s)
+    if duration_s is None or duration_s <= 0:
+        return math.nan
+    return 60.0 / duration_s
+
+
+def tidal_volume_atps_l(
+    tidal_volume_ml: float | int | None,
+) -> float:
+    """Convierte volumen corriente ATPS de mL a L, sin corrección BTPS."""
+
+    volume_ml = _finite_float(tidal_volume_ml)
+    if volume_ml is None or volume_ml <= 0:
+        return math.nan
+    return volume_ml / 1000.0
+
+
+def minute_ventilation_atps_l_min(
+    tidal_volume_ml: float | int | None,
+    breath_duration_s: float | int | None,
+) -> float:
+    """Deriva VE ATPS en L/min a partir de VT ATPS y Ttot en segundos."""
+
+    volume_l = tidal_volume_atps_l(tidal_volume_ml)
+    rate_br_min = respiratory_rate_br_min(breath_duration_s)
+    if not math.isfinite(volume_l) or not math.isfinite(rate_br_min):
+        return math.nan
+    return volume_l * rate_br_min
+
+
+def haldane_gas_exchange_ml_min(
+    expired_ventilation_l_min: float | int | None,
+    fio2_fraction: float | int | None,
+    feo2_fraction: float | int | None,
+    fico2_fraction: float | int | None,
+    feco2_fraction: float | int | None,
+) -> tuple[float, float]:
+    """Calcula VO2 y VCO2 en mL/min mediante la transformación de Haldane.
+
+    La función es genérica: no confirma que ningún canal GX represente estas
+    entradas ni aplica correcciones ATPS, BTPS o STPD.
+    """
+
+    values = tuple(
+        _finite_float(value)
+        for value in (
+            expired_ventilation_l_min,
+            fio2_fraction,
+            feo2_fraction,
+            fico2_fraction,
+            feco2_fraction,
+        )
+    )
+    if any(value is None for value in values):
+        return math.nan, math.nan
+
+    ve_l_min, fio2, feo2, fico2, feco2 = values
+    fractions = (fio2, feo2, fico2, feco2)
+    if ve_l_min <= 0 or any(value < 0 or value >= 1 for value in fractions):
+        return math.nan, math.nan
+
+    inspired_inert_fraction = 1.0 - fio2 - fico2
+    expired_inert_fraction = 1.0 - feo2 - feco2
+    if inspired_inert_fraction <= 0 or expired_inert_fraction <= 0:
+        return math.nan, math.nan
+
+    inspired_ventilation_l_min = (
+        ve_l_min
+        * expired_inert_fraction
+        / inspired_inert_fraction
+    )
+    vo2_ml_min = (
+        inspired_ventilation_l_min * fio2
+        - ve_l_min * feo2
+    ) * 1000.0
+    vco2_ml_min = (
+        ve_l_min * feco2
+        - inspired_ventilation_l_min * fico2
+    ) * 1000.0
+
+    if vo2_ml_min < 0 or vco2_ml_min < 0:
+        return math.nan, math.nan
+    return vo2_ml_min, vco2_ml_min
+
+
+def respiratory_exchange_ratio(
+    vo2_ml_min: float | int | None,
+    vco2_ml_min: float | int | None,
+) -> float:
+    """Deriva RER = VCO2/VO2 usando magnitudes positivas en iguales unidades."""
+
+    vo2 = _finite_float(vo2_ml_min)
+    vco2 = _finite_float(vco2_ml_min)
+    if vo2 is None or vco2 is None or vo2 <= 0 or vco2 < 0:
+        return math.nan
+    return vco2 / vo2
+
+
+def ventilatory_equivalent(
+    ventilation_l_min: float | int | None,
+    gas_exchange_ml_min: float | int | None,
+) -> float:
+    """Deriva VE/VO2 o VE/VCO2 tras convertir VE de L/min a mL/min."""
+
+    ventilation = _finite_float(ventilation_l_min)
+    gas_exchange = _finite_float(gas_exchange_ml_min)
+    if (
+        ventilation is None
+        or gas_exchange is None
+        or ventilation < 0
+        or gas_exchange <= 0
+    ):
+        return math.nan
+    return ventilation * 1000.0 / gas_exchange
+
+
+def oxygen_pulse_ml_beat(
+    vo2_ml_min: float | int | None,
+    heart_rate_bpm: float | int | None,
+) -> float:
+    """Deriva VO2/HR en mL/latido a partir de unidades por minuto."""
+
+    vo2 = _finite_float(vo2_ml_min)
+    heart_rate = _finite_float(heart_rate_bpm)
+    if vo2 is None or heart_rate is None or vo2 < 0 or heart_rate <= 0:
+        return math.nan
+    return vo2 / heart_rate
 
 
 def _read_exact(data: bytes, offset: int, size: int, label: str) -> bytes:

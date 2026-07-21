@@ -1,4 +1,5 @@
 pyodbc
+openpyxl
 pandas
 google-cloud-bigquery
 pyarrow
