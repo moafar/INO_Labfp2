@@ -56,27 +56,36 @@ Estructura binaria confirmada:
 
 - versión: `10`;
 - canales declarados: `12`;
-- señales con descriptor: `10`;
+- cabecera física: `24` bytes;
+- señales con descriptor: `12`;
 - tamaño: `326 + 44 × N`;
-- cada descriptor conserva el identificador, la escala y los bytes originales;
+- dos primeros bloques columnares de 16 bits LE, tipo 0;
+- diez bloques columnares `int32` LE, tipo 1;
+- cada descriptor conserva el identificador, el tipo, la escala y los seis
+  bytes originales;
 - cada valor decodificado se obtiene como `raw_value / scale`.
 
 Catálogo actual:
 
-| ID | Alias | Confianza |
-|---:|---|---|
-| 1 | `elapsed_time_s` | confirmed |
-| 11 | `breath_duration_s` | validated |
-| 10 | `channel_10` | unknown |
-| 12 | `tidal_volume_atps_ml` | validated |
-| 18 | `channel_18` | unknown |
-| 20 | `fio2_fraction` | provisional |
-| 19 | `feo2_fraction` | provisional |
-| 15 | `ventilation_l_min` | provisional |
-| 17 | `fico2_fraction` | provisional |
-| 16 | `feco2_fraction` | provisional |
+| Orden | ID | Tipo | Escala | Alias | Confianza |
+|---:|---:|---|---:|---|---|
+| 1 | 24 | 16-bit LE, tipo 0 | 10 | `work_watts` | validated |
+| 2 | 25 | 16-bit LE, tipo 0 | 10 | `speed_rpm` | validated |
+| 3 | 1 | int32 LE, tipo 1 | 1000 | `elapsed_time_s` | confirmed |
+| 4 | 11 | int32 LE, tipo 1 | 1000 | `breath_duration_s` | validated |
+| 5 | 10 | int32 LE, tipo 1 | 1000 | `inspiratory_time_s` | validated |
+| 6 | 12 | int32 LE, tipo 1 | 1000 | `tidal_volume_atps_ml` | validated |
+| 7 | 18 | int32 LE, tipo 1 | 1000 | `gross_expired_o2_volume_ml_per_breath` | validated |
+| 8 | 20 | int32 LE, tipo 1 | 10000 | `fio2_fraction` | validated |
+| 9 | 19 | int32 LE, tipo 1 | 10000 | `feto2_fraction` | validated |
+| 10 | 15 | int32 LE, tipo 1 | 1000 | `gross_expired_co2_volume_ml_per_breath` | validated |
+| 11 | 17 | int32 LE, tipo 1 | 10000 | `fico2_fraction` | validated |
+| 12 | 16 | int32 LE, tipo 1 | 10000 | `fetco2_fraction` | validated |
 
-No renombrar los canales 10 o 18 ni elevar un canal provisional a validado basándose únicamente en correlación.
+Los canales 24 y 25 son bloques independientes, no valores intercalados. Los
+ceros de `speed_rpm` se conservan como mediciones reales. ID19 e ID16 son
+concentraciones end-tidal, no mixed-expired. ID18 e ID15 son volúmenes
+espirados brutos por respiración, no VO2/VCO2 netos.
 
 ## Datos de referencia
 
@@ -150,6 +159,9 @@ VE_ATPS (L/min) =
 La transformación de Haldane que debe evaluarse, sin asumirla confirmada, es:
 
 ```text
+FEO2 = gross_expired_o2_volume_ml_per_breath / tidal_volume_atps_ml
+FECO2 = gross_expired_co2_volume_ml_per_breath / tidal_volume_atps_ml
+
 FIN2 = 1 - FIO2 - FICO2
 FEN2 = 1 - FEO2 - FECO2
 
@@ -158,6 +170,9 @@ VI = VE × FEN2 / FIN2
 VO2 = (VI × FIO2 - VE × FEO2) × 1000
 VCO2 = (VE × FECO2 - VI × FICO2) × 1000
 ```
+
+No sustituir FEO2/FECO2 mezcladas por `feto2_fraction` o `fetco2_fraction`:
+estas dos últimas son concentraciones al final de la espiración.
 
 No buscar ni incorporar por ahora temperatura, humedad o presión barométrica. Si su ausencia impide una reproducción exacta, cuantificar la diferencia y dejarla documentada como limitación.
 

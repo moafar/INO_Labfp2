@@ -47,27 +47,41 @@ offset 10 (bytes 11-12 en SQL Server). Su rango observado fue 10-815.
 
 | Segmento | Longitud | Interpretación |
 |---|---:|---|
-| Cabecera | 36 bytes | Versión, longitud, 12 canales, N y campos aún no descritos |
-| Canales auxiliares | 4 × N | Dos `uint16` por observación; significado pendiente |
-| Diez bloques | 10 × (6 + 4 × N) | Descriptor de 6 bytes y N valores `int32` |
+| Cabecera | 24 bytes | Versión, longitud, 12 canales, N y campos aún no descritos |
+| ID24 | `6 + 2 × N` | Descriptor y N valores de 16 bits little-endian |
+| ID25 | `6 + 2 × N` | Descriptor y N valores de 16 bits little-endian |
+| ID1-ID16 | `10 × (6 + 4 × N)` | Diez descriptores y bloques de N valores `int32` |
 | Cola | 230 bytes | Estructura aún no descrita; se conserva intacta |
 
-En cada descriptor se han confirmado el identificador en el primer byte y la
-escala `uint16` little-endian en los bytes 3-4. Los demás bytes se conservan
-sin interpretación.
+Los datos son columnares: cada descriptor va seguido por los N valores de su
+canal. Los canales 24 y 25 son bloques independientes; no son pares
+intercalados por observación. La parte variable suma `44 × N`, pero no existen
+filas físicas contiguas de 44 bytes.
 
-| ID | Escala | Alias actual | Confianza |
-|---:|---:|---|---|
-| 1 | 1000 | `elapsed_time_s` | Confirmado |
-| 11 | 1000 | `breath_duration_s` | Validado |
-| 10 | 1000 | `channel_10` | Desconocido |
-| 12 | 1000 | `tidal_volume_atps_ml` | Validado |
-| 18 | 1000 | `channel_18` | Desconocido |
-| 20 | 10000 | `fio2_fraction` | Provisional |
-| 19 | 10000 | `feo2_fraction` | Provisional |
-| 15 | 1000 | `channel_15` | Desconocido |
-| 17 | 10000 | `fico2_fraction` | Provisional |
-| 16 | 10000 | `feco2_fraction` | Provisional |
+En cada descriptor se han confirmado el identificador en el primer byte, la
+escala `uint16` little-endian en los bytes 3-4 y el tipo físico en el quinto
+byte. Los bytes segundo y sexto todavía no tienen interpretación semántica y
+los seis se conservan sin alteración.
+
+| Orden | ID | Tipo | Escala | Unidad | Alias | Confianza |
+|---:|---:|---|---:|---|---|---|
+| 1 | 24 | 16-bit LE, tipo 0 | 10 | W | `work_watts` | Validado |
+| 2 | 25 | 16-bit LE, tipo 0 | 10 | rpm | `speed_rpm` | Validado |
+| 3 | 1 | int32 LE, tipo 1 | 1000 | s | `elapsed_time_s` | Confirmado |
+| 4 | 11 | int32 LE, tipo 1 | 1000 | s/resp | `breath_duration_s` | Validado |
+| 5 | 10 | int32 LE, tipo 1 | 1000 | s | `inspiratory_time_s` | Validado |
+| 6 | 12 | int32 LE, tipo 1 | 1000 | mL/resp | `tidal_volume_atps_ml` | Validado |
+| 7 | 18 | int32 LE, tipo 1 | 1000 | mL O2/resp | `gross_expired_o2_volume_ml_per_breath` | Validado |
+| 8 | 20 | int32 LE, tipo 1 | 10000 | fracción | `fio2_fraction` | Validado |
+| 9 | 19 | int32 LE, tipo 1 | 10000 | fracción | `feto2_fraction` | Validado |
+| 10 | 15 | int32 LE, tipo 1 | 1000 | mL CO2/resp | `gross_expired_co2_volume_ml_per_breath` | Validado |
+| 11 | 17 | int32 LE, tipo 1 | 10000 | fracción | `fico2_fraction` | Validado |
+| 12 | 16 | int32 LE, tipo 1 | 10000 | fracción | `fetco2_fraction` | Validado |
+
+La conversión de todos los canales es `value = raw_value / scale`. Un cero de
+ID25 es una cadencia real posible y no se convierte automáticamente en nulo.
+La ausencia completa de `GXTestRawData` y la ausencia de un marcador temporal
+son estados de calidad diferentes.
 
 ### Validación contra Patient Query
 
@@ -111,21 +125,30 @@ calibraciones y no correcciones ambientales confirmadas.
 
 ### VO₂, VCO₂ y variables derivadas
 
-Se evaluó Haldane con fracciones inspiradas medidas y con una alternativa de
-aire ambiente, además de la diferencia simple de fracciones:
+Los canales 19 y 16 son FETO2 y FETCO2 al final de la espiración. No son
+fracciones mezcladas y no deben introducirse en Haldane como FEO2/FECO2. Los
+candidatos mezclados se derivan explícitamente de los volúmenes espirados
+brutos y del volumen corriente:
+
+```text
+FEO2_mix = gross_expired_o2_volume_ml_per_breath / tidal_volume_atps_ml
+FECO2_mix = gross_expired_co2_volume_ml_per_breath / tidal_volume_atps_ml
+```
+
+El análisis exploratorio evalúa Haldane con esas fracciones derivadas y con
+las fracciones inspiradas medidas o una alternativa de aire ambiente:
 
 ```text
 FIN2 = 1 - FIO2 - FICO2
-FEN2 = 1 - FEO2 - FECO2
+FEN2 = 1 - FEO2_mix - FECO2_mix
 VI = VE * FEN2 / FIN2
-VO2 = (VI * FIO2 - VE * FEO2) * 1000
-VCO2 = (VE * FECO2 - VI * FICO2) * 1000
+VO2 = (VI * FIO2 - VE * FEO2_mix) * 1000
+VCO2 = (VE * FECO2_mix - VI * FICO2) * 1000
 ```
 
-Los signos y unidades son coherentes, pero la salida sin calibrar sobrestima
-Patient Query. El factor proporcional de VO₂ cambia aproximadamente de 0,51
-en Rest a 0,56 en AT y 0,57 en VO₂ Max; no es una corrección única estable.
-Por ello no se ha incorporado una reconstrucción productiva silenciosa.
+La identidad de los canales y estas relaciones dimensionales no convierten
+ninguna regla temporal de Patient Query en definitiva. Las salidas continúan
+siendo análisis explícitos y no una reconstrucción productiva silenciosa.
 
 | Variable | Momento | R² evaluación | MAE (mL/min) | MdAPE |
 |---|---|---:|---:|---:|
@@ -166,32 +189,34 @@ Rest necesita 20-45 segundos previos; AT combina 10 segundos previos para
 RR/VE con 30 segundos centrados para Vt. Las ventanas posteriores no explican
 de forma estable los tres momentos.
 
-### Canales sin identidad confirmada
+### Identidades de señal validadas
 
-- El canal 10 mantiene una relación moderada con la duración respiratoria, pero
-  el cociente cambia entre Rest y ejercicio; sigue desconocido.
-- El canal 18 se aproxima a `Vt * FEO2`: en evaluación obtiene R² entre 0,991 y
-  0,996, pero el factor varía entre 1,06 y 1,10. No se valida su identidad.
-- El antiguo alias `ventilation_l_min` del canal 15 queda rechazado. Frente a VE
-  derivada obtiene R² entre -0,108 y 0,442 y MdAPE de 20-35 %. En cambio se
-  asocia con `Vt * FECO2` (R² 0,966-0,991), también con factor dependiente de la
-  fase. Se renombra de forma conservadora a `channel_15` y queda desconocido.
-- Los canales 16, 17, 19 y 20 mantienen identidades de fracciones gaseosas
-  provisionales. Plausibilidad y correlación no bastan para validarlos.
+- ID10 reproduce el tiempo inspiratorio `Ti` publicado por Patient Query.
+- ID18 e ID15 son los volúmenes brutos de O2 y CO2 contenidos en cada
+  respiración espirada. No son el consumo neto VO2 ni la producción neta VCO2.
+- ID20 e ID17 reproducen FIO2 y FICO2.
+- ID19 e ID16 reproducen FETO2 y FETCO2. Son concentraciones end-tidal, no
+  `FEO2-Mix` ni `FECO2-Mix`.
+- ID24 reproduce trabajo en vatios.
+- ID25 reproduce `Speed (RPM)` exactamente en VO2 Max y casi exactamente en
+  AT. La convención de selección temporal de Rest sigue abierta, pero no la
+  identidad del canal.
 
 ### Clasificación actual
 
-- Exacto: estructura binaria, escalado `raw/scale`, eje temporal y marcadores.
+- Exacto: estructura binaria, orden, ancho, escalado `raw/scale`, eje temporal
+  y marcadores.
 - Derivado y validado: RR; conversiones de unidades y cocientes algebraicos.
 - Derivado con condición no confirmada: Vt ATPS y VE ATPS.
 - Calibrado: Vt/VE BTPS y los candidatos de VO₂/VCO₂ de las tablas.
-- No reproducible de forma general: VO₂/VCO₂ exactos, trabajo y HR de Rest/AT
-  cuando no existe una medición manual próxima.
+- No reproducible de forma general: VO₂/VCO₂ exactos y HR de Rest/AT cuando no
+  existe una medición manual próxima.
 - Reproducible en VO₂ Max: HR manual más cercana, con R² 0,993, MAE 0,2 bpm y
   MdAPE 0 % en las 85 pruebas de evaluación.
 
-El código conserva siempre `channel_id`, escala, descriptor y valores enteros
-originales. Así, un alias provisional puede corregirse sin perder trazabilidad.
+El código conserva siempre `channel_id`, tipo físico, escala, unidad,
+descriptor y valores enteros originales. Los alias no sustituyen la
+trazabilidad física.
 
 ## ManuallyEnteredData
 

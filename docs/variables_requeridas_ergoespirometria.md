@@ -109,11 +109,11 @@ exportación de 210 columnas no los incluye.
 | N | extraer | núcleo inicial | Modalidad bicicleta/cinta | Interpretación y selección del predicho | categoría | No hay columna directa en las 210 seleccionadas | `dbo.PatVisit.BikeTest`, `dbo.PatVisit.TreadmillTest` | almacenada | Validar exclusividad y coherencia con protocolo | confirmado | E1, E7 | Incorporar ambos indicadores y contrastarlos con el nombre de protocolo. |
 | N | extraer | núcleo inicial | Nombre del protocolo de ejercicio | Interpretación de etapas y carga | texto | `PFProtocol` es demográfico en el catálogo, pero no demuestra equivalencia GX | `dbo.GXTest.GXTestExProtocolName` | almacenada | Directa | confirmado | E4, E7 | Catalogar valores observados sin datos personales y comparar con modalidad. |
 | Q | extraer | núcleo inicial | Nombre y tipo de script GX | Reproducibilidad técnica | texto / código | No localizado | `dbo.GXTest.GXTestScriptName`, `GXTestScriptType` | almacenada | Directa | confirmado | E7 | Documentar catálogo de tipos y versiones de script. |
-| N | investigar | investigación | Trabajo observado en AT, VO2 Max y Rest | Interpretación de la respuesta a la carga; Rest es carga basal o cero salvo evidencia contraria | W | `GX {Rest\|AT\|VO2 Max} Work (Watts)` | — | señal binaria o derivada por localizar | Depende de bicicleta o de velocidad/pendiente en cinta | no localizado | E2, E3, E4, E6 | Localizar AT y VO2 Max como variables necesarias para interpretación. Tratar Rest como opcional hasta que Patient Query demuestre otra semántica. No usar `GXPredicted.BikeWatts` como observado. |
+| N | decodificar | núcleo inicial | Trabajo observado en AT, VO2 Max y Rest | Interpretación de la respuesta a la carga | W | `GX {Rest\|AT\|VO2 Max} Work (Watts)` | `dbo.GXTest.GXTestRawData`, canal 24 | señal binaria | `raw_value / 10` | validado | E2, E3, E4, E5, E6 | Conservar la regla temporal por fase separada del decodificador. No usar `GXPredicted.BikeWatts` como observado. |
 | N | enlazar | ampliación clínica | Trabajo predicho | Comparación con carga alcanzada | W | `GX Predicted Work (Watts)` | Candidatos `dbo.GXPredicted.BikeWatts`, `TreadmillWatts` | almacenada | Selección condicionada por modalidad, aún no validada | provisional | E3, E7 | Validar selección bicicleta/cinta contra Patient Query. |
 | O | no incorporar por ahora | investigación | Velocidad de cinta | Interpretación de protocolo | km/h o mph, por confirmar | `Speed (MPH)` en el catálogo; no en las 210 columnas | — | señal binaria por localizar | Conversión de unidad si procede | no localizado | E2 | Localizar serie o eventos de equipo. |
 | O | no incorporar por ahora | investigación | Pendiente de cinta | Interpretación y cálculo de trabajo | % | `Grade (%)` en el catálogo; no en las 210 columnas | — | señal binaria por localizar | No definida | no localizado | E2 | Localizar serie o eventos de equipo. |
-| O | no incorporar por ahora | investigación | Cadencia de bicicleta | Calidad de carga | rpm | `Speed (RPM)` en el catálogo; no en las 210 columnas | — | señal binaria por localizar | No aplica | no localizado | E2 | Evaluar canales auxiliares sin asignarles identidad por correlación sola. |
+| N | decodificar | núcleo inicial | Cadencia de bicicleta | Calidad de carga | rpm | `GX {Rest\|AT\|VO2 Max} Speed (RPM)` | `dbo.GXTest.GXTestRawData`, canal 25 | señal binaria | `raw_value / 10` | validado | E2, E4, E5, E6 | Mantener cero real como cero. La selección de Rest sigue sin una regla temporal definitiva. |
 | Q | extraer | núcleo inicial | Inicio y fin absolutos de la prueba | Duración y alineación de eventos manuales | fecha-hora | No localizado como resultado PQ | `dbo.GXTest.GXTestStartTime`, `GXTestEndTime` | marcador | `duration_s = end - start` | confirmado | E4, E7 | Verificar zona/precisión y controlar fin anterior a inicio. |
 
 ### Ventilatorias
@@ -129,23 +129,25 @@ exportación de 210 columnas no los incluye.
 | N | investigar | investigación | Reserva ventilatoria | Limitación ventilatoria | L/min y % | `BR (L/Min)`, `BR (%)`; no están en las 210 seleccionadas | — | derivada | Fórmula exacta de Patient Query no confirmada; depende de MVV y VE | no localizado | E2 | Determinar si usa `MVV - VE`, predicho alternativo u otra definición. |
 | N | derivar | ampliación clínica | VE/MVV | Limitación ventilatoria | % | `GX AT VE/MVV (%)`, `GX VO2 Max VE/MVV (%)` | Derivable cuando MVV quede seleccionada | derivada | `100 × VE_BTPS / MVV` como hipótesis | provisional | E3, E4 | Confirmar condición de VE, selección de MVV y redondeo. |
 | O | no incorporar por ahora | ampliación clínica | Vt/IC | Hiperinsuflación dinámica / patrón ventilatorio | % | `GX AT Vt/IC (%)`, `GX VO2 Max Vt/IC (%)` | Derivable cuando IC quede seleccionada | derivada | `100 × Vt_BTPS / IC` | provisional | E3, E4 | Confirmar momento y fuente de IC. |
-| O | no incorporar por ahora | investigación | Ti, Te y Ti/Ttot | Patrón ventilatorio | s, s, razón | `Ti`, `Te`, `Ti/Ttot` en catálogo; no en las 210 columnas | — | señal binaria por localizar | `Ti/Ttot = Ti / Ttot` | no localizado | E2 | No atribuir estas señales a los canales 10, 15 o 18 sin validación. |
-| Q | investigar | investigación | Canales 10, 15 y 18 | Investigación y trazabilidad de señales | valores escalados; unidad desconocida | Sin correspondencia demostrada | `dbo.GXTest.GXTestRawData`, canales 10, 15 y 18 | señal binaria | Cada valor es `raw_value / scale` | desconocido | E4, E5, E6 | Preservar ID, descriptor, escala y enteros; no renombrar por correlación. |
-| Q | investigar | investigación | Dos canales auxiliares por observación | Investigación de carga u otras señales | `uint16`; unidad desconocida | No localizado | `dbo.GXTest.GXTestRawData`, bloque auxiliar `2 × uint16` | señal binaria | Lectura little-endian confirmada | desconocido | E4, E5 | Investigar solo con evidencia externa o validación independiente. |
+| I | decodificar | núcleo inicial | Tiempo inspiratorio (`Ti`) | Patrón ventilatorio | s | `GX {Rest\|AT\|VO2 Max} Ti (sec)` | `dbo.GXTest.GXTestRawData`, canal 10 | señal binaria | `raw_value / 1000` | validado | E2, E4, E5, E6 | `Te` y `Ti/Ttot` pueden derivarse, pero requieren validación independiente de la regla de resumen. |
+| I | decodificar | núcleo inicial | Volumen bruto espirado de O2 por respiración | Derivar fracción mezclada e intercambio gaseoso | mL O2/resp | No equivale a `VO2 (mL/br)` | `dbo.GXTest.GXTestRawData`, canal 18 | señal binaria | `raw_value / 1000` | validado | E4, E5, E6 | No denominar consumo o captación neta de O2. La condición volumétrica exacta sigue abierta. |
+| I | decodificar | núcleo inicial | Volumen bruto espirado de CO2 por respiración | Derivar fracción mezclada e intercambio gaseoso | mL CO2/resp | No equivale a `VCO2 (mL/br)` | `dbo.GXTest.GXTestRawData`, canal 15 | señal binaria | `raw_value / 1000` | validado | E4, E5, E6 | No denominar producción neta de CO2. La condición volumétrica exacta sigue abierta. |
+| Q | decodificar | núcleo inicial | Doce descriptores físicos | Trazabilidad de orden, tipo y escala | bytes | No publicado | `dbo.GXTest.GXTestRawData`, doce bloques columnares | señal binaria | Dos bloques de 16 bits y diez `int32`; `value = raw_value / scale` | confirmado | E4, E5 | Conservar completos los seis bytes de cada descriptor. |
 
 ### Intercambio gaseoso
 
 | Nivel | Tratamiento | Fase | Variable analítica requerida | Finalidad | Unidad / condición | Nombre en Patient Query | Tabla y columna física confirmada | Origen | Regla de cálculo | Estado | Evidencia disponible | Acción pendiente |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| I | decodificar | núcleo inicial | FIO2 | Entrada de Haldane | fracción; seco/húmedo no confirmado | `FIO2` y `FIO2 (dry)` en catálogo; no en las 210 seleccionadas | `dbo.GXTest.GXTestRawData`, canal 20 | señal binaria | `raw_value / 10000` | provisional | E2, E4, E5, E6 | Validar identidad y condición del gas con evidencia independiente. |
-| I | decodificar | núcleo inicial | FEO2 | Entrada de Haldane | fracción; seco/húmedo no confirmado | `FEO2-Mix`, `FETO2` en catálogo; no en las 210 seleccionadas | `dbo.GXTest.GXTestRawData`, canal 19 | señal binaria | `raw_value / 10000` | provisional | E2, E4, E5, E6 | Distinguir fracción mezclada de fracción end-tidal y validar identidad. |
-| I | decodificar | núcleo inicial | FICO2 | Entrada de Haldane | fracción; seco/húmedo no confirmado | `FICO2` y `FICO2 (dry)` en catálogo; no en las 210 seleccionadas | `dbo.GXTest.GXTestRawData`, canal 17 | señal binaria | `raw_value / 10000` | provisional | E2, E4, E5, E6 | Validar identidad, cero instrumental y condición del gas. |
-| I | decodificar | núcleo inicial | FECO2 | Entrada de Haldane | fracción; seco/húmedo no confirmado | `FECO2-Mix` en catálogo; no en las 210 seleccionadas | `dbo.GXTest.GXTestRawData`, canal 16 | señal binaria | `raw_value / 10000` | provisional | E2, E4, E5, E6 | Distinguir fracción mezclada de end-tidal y validar identidad. |
-| I | derivar | núcleo inicial | Fracciones inertes inspirada y espirada | Balance de Haldane | fracción | No publicadas | Derivadas de las cuatro fracciones candidatas | derivada | `FIN2 = 1 - FIO2 - FICO2`; `FEN2 = 1 - FEO2 - FECO2` | provisional | E4, E5, E6 | Exigir fracciones físicas y confirmar que el gas inerte puede tratarse así. |
+| I | decodificar | núcleo inicial | FIO2 | Entrada de Haldane | fracción; seco/húmedo no confirmado | `FIO2` y `FIO2 (dry)` | `dbo.GXTest.GXTestRawData`, canal 20 | señal binaria | `raw_value / 10000` | validado | E2, E4, E5, E6 | Mantener abierta únicamente la condición seco/húmedo. |
+| I | decodificar | núcleo inicial | FETO2 end-tidal | Patrón del gas al final de la espiración | fracción | `FETO2 (%)` | `dbo.GXTest.GXTestRawData`, canal 19 | señal binaria | `raw_value / 10000` | validado | E2, E4, E5, E6 | No usar como `FEO2-Mix` en Haldane. |
+| I | decodificar | núcleo inicial | FICO2 | Entrada de Haldane | fracción; seco/húmedo no confirmado | `FICO2` y `FICO2 (dry)` | `dbo.GXTest.GXTestRawData`, canal 17 | señal binaria | `raw_value / 10000` | validado | E2, E4, E5, E6 | Mantener controles de valores instrumentales anómalos. |
+| I | decodificar | núcleo inicial | FETCO2 end-tidal | Patrón del gas al final de la espiración | fracción | `FETCO2 (%)` | `dbo.GXTest.GXTestRawData`, canal 16 | señal binaria | `raw_value / 10000` | validado | E2, E4, E5, E6 | No usar como `FECO2-Mix` en Haldane. |
+| I | derivar | núcleo inicial | FEO2-Mix y FECO2-Mix | Balance de Haldane | fracción | `FEO2-Mix`, `FECO2-Mix` | Derivadas de canales 18/15 y canal 12 | derivada | `FEO2_mix = gross_O2 / Vt`; `FECO2_mix = gross_CO2 / Vt` | validado dimensionalmente | E4, E5, E6 | La regla temporal de Patient Query y la condición volumétrica continúan abiertas. |
+| I | derivar | núcleo inicial | Fracciones inertes inspirada y espirada | Balance de Haldane | fracción | No publicadas | Derivadas de fracciones inspiradas y mezcladas | derivada | `FIN2 = 1 - FIO2 - FICO2`; `FEN2 = 1 - FEO2_mix - FECO2_mix` | provisional | E4, E5, E6 | Exigir fracciones físicas y confirmar que el gas inerte puede tratarse así. |
 | I | derivar | núcleo inicial | Ventilación inspirada (`VI`) | Balance de Haldane | L/min; condición heredada de VE | No publicada | Derivada | derivada | `VI = VE × FEN2 / FIN2` | provisional | E4, E5, E6 | Confirmar condición de VE y fracciones antes de uso productivo. |
-| I | derivar | núcleo inicial | Consumo de oxígeno (`VO2`) | Resultado prioritario | mL/min; condición PQ no declarada, STPD por confirmar | `GX {Rest\|AT\|VO2 Max} VO2 (mL/min)` | —; candidato desde canales 11, 12, 16, 17, 19 y 20 | derivada | `(VI × FIO2 - VE × FEO2) × 1000` | provisional | E3, E4, E5, E6 | Resolver condición del gas y factor dependiente de fase; hoy solo existe reproducción calibrada. |
+| I | derivar | núcleo inicial | Consumo de oxígeno (`VO2`) | Resultado prioritario | mL/min; condición PQ no declarada, STPD por confirmar | `GX {Rest\|AT\|VO2 Max} VO2 (mL/min)` | Candidato desde canales 11, 12, 18, 20, 15 y 17 | derivada | `(VI × FIO2 - VE × FEO2_mix) × 1000` | provisional | E3, E4, E5, E6 | Resolver condición del gas y factor dependiente de fase; no incorporar una aproximación silenciosa. |
 | N | derivar | ampliación clínica | VO2 relativo | Interpretación de capacidad aeróbica | mL/kg/min; condición heredada de VO2 | `GX {Rest\|AT\|VO2 Max} VO2 (mL/kg/min)` | Derivable con `PatVisit.Weight` | derivada | `VO2_mL_min / weight_kg` | provisional | E1, E3, E4 | Validar peso, redondeo y tratamiento de valores ausentes. |
-| I | derivar | núcleo inicial | Producción de CO2 (`VCO2`) | Resultado prioritario | mL/min; condición PQ no declarada, STPD por confirmar | `GX {Rest\|AT\|VO2 Max} VCO2 (mL/min)` | —; candidato desde canales 11, 12, 16, 17, 19 y 20 | derivada | `(VE × FECO2 - VI × FICO2) × 1000` | provisional | E3, E4, E5, E6 | Resolver condición del gas y calibración dependiente de fase. |
+| I | derivar | núcleo inicial | Producción de CO2 (`VCO2`) | Resultado prioritario | mL/min; condición PQ no declarada, STPD por confirmar | `GX {Rest\|AT\|VO2 Max} VCO2 (mL/min)` | Candidato desde canales 11, 12, 18, 20, 15 y 17 | derivada | `(VE × FECO2_mix - VI × FICO2) × 1000` | provisional | E3, E4, E5, E6 | Resolver condición del gas y calibración dependiente de fase. |
 | N | derivar | núcleo inicial | RER / RQ | Intensidad y calidad del esfuerzo | razón adimensional | `GX {Rest\|AT\|VO2 Max} RQ`; también `GX AT RER` y `GX VO2 Max RER` | Derivable de VO2 y VCO2 | derivada | `VCO2 / VO2` | provisional | E3, E4, E5, E6 | Determinar si `RQ` y `RER` son equivalentes en Patient Query y validar sin depender de una calibración común. |
 | N | derivar | ampliación clínica | Equivalente ventilatorio de O2 | Eficiencia ventilatoria | razón adimensional | `GX {Rest\|AT\|VO2 Max} VE/VO2` | Derivable de VE y VO2 | derivada | `VE_L_min × 1000 / VO2_mL_min` | provisional | E3, E4, E5 | Hereda la incertidumbre de VE/VO2; confirmar condiciones y ventana. |
 | N | derivar | ampliación clínica | Equivalente ventilatorio de CO2 | Eficiencia ventilatoria | razón adimensional | `GX {Rest\|AT\|VO2 Max} VE/VCO2` | Derivable de VE y VCO2 | derivada | `VE_L_min × 1000 / VCO2_mL_min` | provisional | E3, E4, E5 | Hereda la incertidumbre de VE/VCO2; confirmar condiciones y ventana. |
@@ -226,7 +228,7 @@ observados, predichos, porcentaje del predicho, LLN, ULN y SD.
 | Q | extraer | núcleo inicial | Identificador de prueba GX | Trazabilidad técnica y partición | entero | No se exporta en las 210 columnas | `dbo.GXTest.GXTestID` | almacenada | Clave de prueba; evaluación si `GXTestID mod 5 = 0` | confirmado | E3, E4, E6, E7 | No exponer fuera del uso técnico necesario. |
 | Q | enlazar | núcleo inicial | Identificador y fecha de visita | Enlace y emparejamiento | entero / fecha-hora | `Visit Date`; el identificador interno no se publica | `dbo.PatVisit.PatVisitID`, `VisitDateTime`, `PatVisitGUID` | almacenada | Emparejamiento validado: paciente normalizado + fecha-hora; rechazar ambigüedad | validado | E1, E3, E4, E7 | Mantener rechazo de claves duplicadas y separación de identificadores personales. |
 | Q | extraer | núcleo inicial | Binario GX original | Auditoría y reprocesado | bytes | No publicado | `dbo.GXTest.GXTestRawData` | señal binaria | Preservar sin alteración | confirmado | E4, E5, E7 | Registrar disponibilidad y error estructural sin volcar datos clínicos. |
-| Q | decodificar | núcleo inicial | Versión, longitud y número de observaciones | Integridad binaria | versión 10; bytes; N | No publicado | Cabecera de `GXTestRawData` | señal binaria | `length = 326 + 44 × N`; 12 canales declarados, 10 descriptores | confirmado | E4, E5 | Mantener validación estricta antes de decodificar. |
+| Q | decodificar | núcleo inicial | Versión, longitud y número de observaciones | Integridad binaria | versión 10; bytes; N | No publicado | Cabecera de `GXTestRawData` | señal binaria | Cabecera de 24 bytes; `length = 326 + 44 × N`; 12 canales y 12 descriptores | confirmado | E4, E5 | Mantener validación estricta antes de decodificar. |
 | Q | decodificar | núcleo inicial | Descriptor, ID, escala y entero original por señal | Auditabilidad de identidades | bytes / entero | No publicado | Descriptores y bloques de `GXTestRawData` | señal binaria | `value = raw_value / scale` | confirmado | E4, E5 | Conservar incluso cuando cambie un alias provisional. |
 | Q | decodificar | núcleo inicial | Eventos manuales originales | Auditoría de FC, SpO2 y PA | fecha OLE, código, valor | No publicado | `dbo.GXTest.ManuallyEnteredData` | señal binaria | Estructura de eventos consumida exactamente; conservar códigos desconocidos | confirmado | E4, E5 | Inventariar códigos adicionales sin inferir significado por frecuencia. |
 | Q | derivar | núcleo inicial | Disponibilidad/completitud de señal | Calidad | booleanos y conteos | No publicado | Derivada de ambos binarios y sus cabeceras | derivada | `GXTestRawData IS NOT NULL`, decodificación válida, cobertura temporal | confirmado | E4, E5 | Mantener indicadores por prueba y por marcador. |
@@ -249,9 +251,9 @@ Ya existe un origen físico demostrado para los siguientes grupos:
   unidades y uso GX siguen pendientes;
 - cabecera GX: inicio/fin, protocolo, script, configuración Borg/PA, espacio
   muerto y los cinco marcadores temporales revisados;
-- `GXTestRawData`: eje temporal, duración respiratoria, volumen corriente y
-  cuatro candidatos de fracciones gaseosas, además de tres señales y dos
-  canales auxiliares cuya identidad sigue desconocida;
+- `GXTestRawData`: doce canales validados: trabajo, RPM, eje temporal, Ttot,
+  Ti, volumen corriente, volúmenes brutos espirados de O2/CO2, FIO2, FICO2 y
+  las concentraciones end-tidal FETO2/FETCO2;
 - `ManuallyEnteredData`: presión sistólica, presión diastólica, frecuencia
   cardiaca y SpO2 con código y conversión conocidos;
 - `GXPredicted`: filas y candidatos físicos de VE, FC, VO2, VCO2 y trabajo
@@ -268,12 +270,13 @@ Ya existe un origen físico demostrado para los siguientes grupos:
 
 No se ha demostrado un origen físico para:
 
-- trabajo observado en Rest, AT y VO2 Max, ni las series de velocidad,
-  pendiente o cadencia;
+- las series de velocidad y pendiente de cinta; trabajo en vatios y cadencia
+  de bicicleta sí están localizados en ID24 e ID25;
 - el factor físico exacto ATPS→BTPS y las conversiones necesarias para obtener
   VO2/VCO2 en la condición usada por Patient Query;
 - PETCO2, PETO2, PECO2 y `Vd/Vt` estimado o medido;
-- Ti, Te, reserva ventilatoria y la definición exacta de HRR;
+- Te, reserva ventilatoria y la definición exacta de HRR; Ti está localizado
+  en ID10;
 - valores Borg de disnea, fatiga de piernas o esfuerzo percibido; el campo
   `GXTestBorgScale` solo confirma la escala configurada;
 - cambios ECG/ST, índice cronotrópico y pendiente VO2/trabajo;
@@ -282,10 +285,9 @@ No se ha demostrado un origen físico para:
 - una fuente continua de FC, SpO2 o presión arterial: solo están confirmados
   eventos manuales discretos.
 
-Los canales 10, 15 y 18 y los dos canales auxiliares **no** se incluyen en la
-lista de “no localizados”: están físicamente localizados, pero su identidad es
-`desconocido`. Del mismo modo, los canales 16, 17, 19 y 20 están localizados
-pero conservan identidad `provisional`.
+Los doce canales de `GXTestRawData` tienen identidad validada y conservan su
+descriptor, tipo, escala y entero original. Las cuestiones abiertas de este
+apartado se refieren a derivaciones o reglas temporales, no al mapeo físico.
 
 ## Campos físicos para la próxima ampliación del extractor
 

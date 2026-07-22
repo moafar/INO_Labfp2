@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from scripts.analyze_ergoespirometry_windows import (
+    add_derived_raw_series,
     calculate_scores,
     get_patient_query_time,
     get_target_time,
@@ -24,6 +25,49 @@ def test_rest_uses_exact_sql_marker_and_keeps_rounded_pq_time() -> None:
 
     assert get_target_time(record, "rest") == 185.0
     assert get_patient_query_time(record, "rest") == 180.0
+
+
+@pytest.mark.parametrize("value", [None, float("nan"), 0.0, -1.0])
+def test_missing_marker_is_not_treated_as_elapsed_time_zero(
+    value: float | None,
+) -> None:
+    """Distingue marcador ausente de una medición cuyo valor pueda ser cero."""
+
+    record = pd.Series({"ATElapsedTime": value})
+
+    assert get_target_time(record, "at") is None
+
+
+def test_gas_exchange_uses_mixed_fractions_from_gross_volumes() -> None:
+    """No usa FETO2/FETCO2 end-tidal como entradas de Haldane."""
+
+    signals = pd.DataFrame(
+        {
+            "breath_duration_s": [2.0],
+            "tidal_volume_atps_ml": [1000.0],
+            "gross_expired_o2_volume_ml_per_breath": [170.0],
+            "gross_expired_co2_volume_ml_per_breath": [40.0],
+            "fio2_fraction": [0.21],
+            "fico2_fraction": [0.0],
+            "feto2_fraction": [0.10],
+            "fetco2_fraction": [0.08],
+        }
+    )
+
+    result = add_derived_raw_series(signals)
+
+    assert result.loc[
+        0, "feo2_mixed_fraction_from_expired_volumes"
+    ] == pytest.approx(0.17)
+    assert result.loc[
+        0, "feco2_mixed_fraction_from_expired_volumes"
+    ] == pytest.approx(0.04)
+    assert result.loc[
+        0, "vo2_haldane_derived_mixed_atps_ml_min"
+    ] == pytest.approx(1200.0)
+    assert result.loc[
+        0, "vco2_haldane_derived_mixed_atps_ml_min"
+    ] == pytest.approx(1200.0)
 
 
 def test_summarize_at_time_distinguishes_window_positions() -> None:

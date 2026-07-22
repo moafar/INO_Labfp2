@@ -80,42 +80,35 @@ PRIORITY_RAW_CANDIDATES = {
     "respiratory_rate": {"rr_from_breath_duration"},
     "tidal_volume": {"vt_atps_from_channel_12_l"},
     "ventilation": {"ve_atps_from_vt_ttot_l_min"},
+    "work": {"work_watts"},
     "vo2": {
-        "vo2_haldane_measured_atps_ml_min",
-        "vo2_haldane_ambient_atps_ml_min",
-        "vo2_simple_difference_atps_ml_min",
+        "vo2_haldane_derived_mixed_atps_ml_min",
+        "vo2_haldane_ambient_derived_mixed_atps_ml_min",
+        "vo2_simple_derived_mixed_atps_ml_min",
     },
     "vco2": {
-        "vco2_haldane_measured_atps_ml_min",
-        "vco2_haldane_ambient_atps_ml_min",
-        "vco2_simple_difference_atps_ml_min",
+        "vco2_haldane_derived_mixed_atps_ml_min",
+        "vco2_haldane_ambient_derived_mixed_atps_ml_min",
+        "vco2_simple_derived_mixed_atps_ml_min",
     },
-    "rq": {"rer_haldane_measured"},
-    "ve_vo2": {"ve_vo2_haldane_measured"},
-    "ve_vco2": {"ve_vco2_haldane_measured"},
+    "rq": {"rer_haldane_derived_mixed"},
+    "ve_vo2": {"ve_vo2_haldane_derived_mixed"},
+    "ve_vco2": {"ve_vco2_haldane_derived_mixed"},
     "heart_rate": {"manual_heart_rate_bpm"},
 }
 
 SIGNAL_RELATIONSHIPS = {
-    "channel_10_vs_breath_duration": (
-        "channel_10",
+    "inspiratory_time_vs_breath_duration": (
+        "inspiratory_time_s",
         "breath_duration_s",
     ),
-    "channel_18_vs_expired_o2_volume": (
-        "channel_18",
-        "expired_o2_volume_candidate_ml",
-    ),
-    "channel_18_vs_tidal_volume": (
-        "channel_18",
+    "gross_expired_o2_volume_vs_tidal_volume": (
+        "gross_expired_o2_volume_ml_per_breath",
         "tidal_volume_atps_ml",
     ),
-    "channel_15_vs_expired_co2_volume": (
-        "channel_15",
-        "expired_co2_volume_candidate_ml",
-    ),
-    "channel_15_vs_derived_ventilation": (
-        "channel_15",
-        "ve_atps_from_vt_ttot_l_min",
+    "gross_expired_co2_volume_vs_tidal_volume": (
+        "gross_expired_co2_volume_ml_per_breath",
+        "tidal_volume_atps_ml",
     ),
 }
 
@@ -193,8 +186,10 @@ def get_target_time(
 
     if pd.isna(raw_value):
         return None
-
-    return float(raw_value)
+    value = float(raw_value)
+    if not np.isfinite(value) or value <= 0:
+        return None
+    return value
 
 
 def get_patient_query_time(
@@ -327,9 +322,9 @@ def add_derived_raw_series(
 
     gas_columns = {
         "fio2_fraction",
-        "feo2_fraction",
         "fico2_fraction",
-        "feco2_fraction",
+        "gross_expired_o2_volume_ml_per_breath",
+        "gross_expired_co2_volume_ml_per_breath",
     }
 
     if not gas_columns.issubset(result.columns):
@@ -339,16 +334,16 @@ def add_derived_raw_series(
         result["fio2_fraction"],
         errors="coerce",
     )
-    feo2 = pd.to_numeric(
-        result["feo2_fraction"],
+    gross_expired_o2_ml = pd.to_numeric(
+        result["gross_expired_o2_volume_ml_per_breath"],
         errors="coerce",
     )
     fico2 = pd.to_numeric(
         result["fico2_fraction"],
         errors="coerce",
     )
-    feco2 = pd.to_numeric(
-        result["feco2_fraction"],
+    gross_expired_co2_ml = pd.to_numeric(
+        result["gross_expired_co2_volume_ml_per_breath"],
         errors="coerce",
     )
     ve_atps = pd.to_numeric(
@@ -356,15 +351,24 @@ def add_derived_raw_series(
         errors="coerce",
     )
 
+    feo2_mixed = (
+        gross_expired_o2_ml / tidal_volume_atps_ml
+    ).where(valid_tidal_volume)
+    feco2_mixed = (
+        gross_expired_co2_ml / tidal_volume_atps_ml
+    ).where(valid_tidal_volume)
+    result["feo2_mixed_fraction_from_expired_volumes"] = feo2_mixed
+    result["feco2_mixed_fraction_from_expired_volumes"] = feco2_mixed
+
     vo2_haldane, vco2_haldane = calculate_haldane_series(
         expired_ventilation_l_min=ve_atps,
         fio2_fraction=fio2,
-        feo2_fraction=feo2,
+        feo2_fraction=feo2_mixed,
         fico2_fraction=fico2,
-        feco2_fraction=feco2,
+        feco2_fraction=feco2_mixed,
     )
-    result["vo2_haldane_measured_atps_ml_min"] = vo2_haldane
-    result["vco2_haldane_measured_atps_ml_min"] = vco2_haldane
+    result["vo2_haldane_derived_mixed_atps_ml_min"] = vo2_haldane
+    result["vco2_haldane_derived_mixed_atps_ml_min"] = vco2_haldane
 
     ambient_fio2 = pd.Series(
         AMBIENT_FIO2_FRACTION,
@@ -377,38 +381,29 @@ def add_derived_raw_series(
     vo2_ambient, vco2_ambient = calculate_haldane_series(
         expired_ventilation_l_min=ve_atps,
         fio2_fraction=ambient_fio2,
-        feo2_fraction=feo2,
+        feo2_fraction=feo2_mixed,
         fico2_fraction=ambient_fico2,
-        feco2_fraction=feco2,
+        feco2_fraction=feco2_mixed,
     )
-    result["vo2_haldane_ambient_atps_ml_min"] = vo2_ambient
-    result["vco2_haldane_ambient_atps_ml_min"] = vco2_ambient
+    result["vo2_haldane_ambient_derived_mixed_atps_ml_min"] = vo2_ambient
+    result["vco2_haldane_ambient_derived_mixed_atps_ml_min"] = vco2_ambient
 
-    result["vo2_simple_difference_atps_ml_min"] = (
-        ve_atps * (fio2 - feo2) * 1000.0
+    result["vo2_simple_derived_mixed_atps_ml_min"] = (
+        ve_atps * (fio2 - feo2_mixed) * 1000.0
     ).where(ve_atps.gt(0))
-    result["vco2_simple_difference_atps_ml_min"] = (
-        ve_atps * (feco2 - fico2) * 1000.0
+    result["vco2_simple_derived_mixed_atps_ml_min"] = (
+        ve_atps * (feco2_mixed - fico2) * 1000.0
     ).where(ve_atps.gt(0))
 
-    result["rer_haldane_measured"] = (
+    result["rer_haldane_derived_mixed"] = (
         vco2_haldane / vo2_haldane
     ).where(vo2_haldane.gt(0))
-    result["ve_vo2_haldane_measured"] = (
+    result["ve_vo2_haldane_derived_mixed"] = (
         ve_atps * 1000.0 / vo2_haldane
     ).where(vo2_haldane.gt(0))
-    result["ve_vco2_haldane_measured"] = (
+    result["ve_vco2_haldane_derived_mixed"] = (
         ve_atps * 1000.0 / vco2_haldane
     ).where(vco2_haldane.gt(0))
-
-    # Candidatos algebraicos para investigar los canales 15 y 18. No son
-    # identidades de señal y permanecen separados de las variables clínicas.
-    result["expired_o2_volume_candidate_ml"] = (
-        tidal_volume_atps_ml * feo2
-    ).where(valid_tidal_volume)
-    result["expired_co2_volume_candidate_ml"] = (
-        tidal_volume_atps_ml * feco2
-    ).where(valid_tidal_volume)
 
     return result
 

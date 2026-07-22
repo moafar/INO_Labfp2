@@ -14,28 +14,70 @@ import pandas as pd
 
 RAW_VERSION: Final = 10
 RAW_CHANNEL_COUNT: Final = 12
-RAW_HEADER_SIZE: Final = 36
-RAW_SIGNAL_COUNT: Final = 10
+RAW_HEADER_SIZE: Final = 24
+RAW_SIGNAL_COUNT: Final = 12
 RAW_SIGNAL_DESCRIPTOR_SIZE: Final = 6
 RAW_TRAILER_SIZE: Final = 230
+RAW_STORAGE_UINT16: Final = 0
+RAW_STORAGE_INT32: Final = 1
 MMHG_PER_KPA: Final = 7.50062
 OLE_AUTOMATION_EPOCH: Final = datetime(1899, 12, 30)
 
 
-# Los alias salvo elapsed_time_s son hipótesis funcionales. El identificador y
-# el descriptor originales se conservan para no convertirlas en hechos.
+# El orden, tipo, escala y significado se validaron contra Patient Query. Los
+# seis bytes originales de cada descriptor se conservan para auditoría.
 SIGNAL_CATALOG: Final = {
+    24: ("work_watts", "validated"),
+    25: ("speed_rpm", "validated"),
     1: ("elapsed_time_s", "confirmed"),
     11: ("breath_duration_s", "validated"),
-    10: ("channel_10", "unknown"),
+    10: ("inspiratory_time_s", "validated"),
     12: ("tidal_volume_atps_ml", "validated"),
-    18: ("channel_18", "unknown"),
-    20: ("fio2_fraction", "provisional"),
-    19: ("feo2_fraction", "provisional"),
-    15: ("channel_15", "unknown"),
-    17: ("fico2_fraction", "provisional"),
-    16: ("feco2_fraction", "provisional"),
+    18: (
+        "gross_expired_o2_volume_ml_per_breath",
+        "validated",
+    ),
+    20: ("fio2_fraction", "validated"),
+    19: ("feto2_fraction", "validated"),
+    15: (
+        "gross_expired_co2_volume_ml_per_breath",
+        "validated",
+    ),
+    17: ("fico2_fraction", "validated"),
+    16: ("fetco2_fraction", "validated"),
 }
+
+# Tabla separada para conservar la interfaz histórica de SIGNAL_CATALOG
+# como pares (alias, confianza).
+SIGNAL_UNITS: Final = {
+    24: "W",
+    25: "rpm",
+    1: "s",
+    11: "s/breath",
+    10: "s",
+    12: "mL/breath",
+    18: "mL O2/breath",
+    20: "fraction",
+    19: "fraction",
+    15: "mL CO2/breath",
+    17: "fraction",
+    16: "fraction",
+}
+
+RAW_CHANNEL_LAYOUT: Final = (
+    (24, 10, RAW_STORAGE_UINT16),
+    (25, 10, RAW_STORAGE_UINT16),
+    (1, 1000, RAW_STORAGE_INT32),
+    (11, 1000, RAW_STORAGE_INT32),
+    (10, 1000, RAW_STORAGE_INT32),
+    (12, 1000, RAW_STORAGE_INT32),
+    (18, 1000, RAW_STORAGE_INT32),
+    (20, 10000, RAW_STORAGE_INT32),
+    (19, 10000, RAW_STORAGE_INT32),
+    (15, 1000, RAW_STORAGE_INT32),
+    (17, 10000, RAW_STORAGE_INT32),
+    (16, 10000, RAW_STORAGE_INT32),
+)
 
 MANUAL_MEASUREMENT_CATALOG: Final = {
     3037: ("systolic_bp", "mmHg", MMHG_PER_KPA),
@@ -66,7 +108,9 @@ class SignalBlock:
 
     channel_id: int
     scale: int
+    storage_type: int
     name: str
+    unit: str
     confidence: str
     descriptor: bytes
     raw_values: tuple[int, ...]
@@ -78,10 +122,28 @@ class RawData:
     """Contenido decodificado de GXTestRawData."""
 
     header: RawHeader
-    auxiliary_channel_1: tuple[int, ...]
-    auxiliary_channel_2: tuple[int, ...]
     signals: tuple[SignalBlock, ...]
     trailer: bytes
+
+    def channel(self, channel_id: int) -> SignalBlock:
+        """Obtiene un canal por su identificador físico."""
+
+        for signal in self.signals:
+            if signal.channel_id == channel_id:
+                return signal
+        raise KeyError(channel_id)
+
+    @property
+    def auxiliary_channel_1(self) -> tuple[int, ...]:
+        """Compatibilidad: enteros originales del antiguo auxiliar ID24."""
+
+        return self.channel(24).raw_values
+
+    @property
+    def auxiliary_channel_2(self) -> tuple[int, ...]:
+        """Compatibilidad: enteros originales del antiguo auxiliar ID25."""
+
+        return self.channel(25).raw_values
 
 
 @dataclass(frozen=True)
@@ -167,17 +229,9 @@ def decode_raw_data(blob: bytes | bytearray | memoryview) -> RawData:
     )
 
     offset = RAW_HEADER_SIZE
-    auxiliary_1: list[int] = []
-    auxiliary_2: list[int] = []
-    for first, second in struct.iter_unpack(
-        "<HH", data[offset : offset + (4 * observation_count)]
-    ):
-        auxiliary_1.append(first)
-        auxiliary_2.append(second)
-    offset += 4 * observation_count
-
     signals: list[SignalBlock] = []
-    for position in range(RAW_SIGNAL_COUNT):
+    for position, expected in enumerate(RAW_CHANNEL_LAYOUT):
+        expected_id, expected_scale, expected_storage_type = expected
         descriptor = data[offset : offset + RAW_SIGNAL_DESCRIPTOR_SIZE]
         if len(descriptor) != RAW_SIGNAL_DESCRIPTOR_SIZE:
             raise ErgoespirometryDecodeError(
@@ -186,17 +240,35 @@ def decode_raw_data(blob: bytes | bytearray | memoryview) -> RawData:
 
         channel_id = descriptor[0]
         scale = struct.unpack_from("<H", descriptor, 2)[0]
-        if scale == 0:
+        storage_type = descriptor[4]
+        if channel_id != expected_id:
             raise ErgoespirometryDecodeError(
-                f"Escala cero en el canal {channel_id}."
+                "Orden de canales inesperado en el bloque "
+                f"{position + 1}: {channel_id} != {expected_id}."
+            )
+        if scale != expected_scale:
+            raise ErgoespirometryDecodeError(
+                f"Escala inesperada en el canal {channel_id}: "
+                f"{scale} != {expected_scale}."
+            )
+        if storage_type != expected_storage_type:
+            raise ErgoespirometryDecodeError(
+                f"Tipo físico inesperado en el canal {channel_id}: "
+                f"{storage_type} != {expected_storage_type}."
             )
         offset += RAW_SIGNAL_DESCRIPTOR_SIZE
 
-        values_size = 4 * observation_count
+        if storage_type == RAW_STORAGE_UINT16:
+            value_format = "<H"
+            value_width = 2
+        else:
+            value_format = "<i"
+            value_width = 4
+        values_size = value_width * observation_count
         raw_values = tuple(
             value[0]
             for value in struct.iter_unpack(
-                "<i", data[offset : offset + values_size]
+                value_format, data[offset : offset + values_size]
             )
         )
         if len(raw_values) != observation_count:
@@ -209,11 +281,14 @@ def decode_raw_data(blob: bytes | bytearray | memoryview) -> RawData:
             channel_id,
             (f"channel_{channel_id}", "unknown"),
         )
+        unit = SIGNAL_UNITS.get(channel_id, "unknown")
         signals.append(
             SignalBlock(
                 channel_id=channel_id,
                 scale=scale,
+                storage_type=storage_type,
                 name=name,
+                unit=unit,
                 confidence=confidence,
                 descriptor=descriptor,
                 raw_values=raw_values,
@@ -229,11 +304,19 @@ def decode_raw_data(blob: bytes | bytearray | memoryview) -> RawData:
 
     return RawData(
         header=header,
-        auxiliary_channel_1=tuple(auxiliary_1),
-        auxiliary_channel_2=tuple(auxiliary_2),
         signals=tuple(signals),
         trailer=trailer,
     )
+
+
+def decode_optional_raw_data(
+    blob: bytes | bytearray | memoryview | None,
+) -> RawData | None:
+    """Distingue ausencia de binario de un binario estructuralmente inválido."""
+
+    if blob is None:
+        return None
+    return decode_raw_data(blob)
 
 
 def raw_data_to_dataframe(decoded: RawData) -> pd.DataFrame:
@@ -241,6 +324,8 @@ def raw_data_to_dataframe(decoded: RawData) -> pd.DataFrame:
 
     result: dict[str, object] = {
         "observation_index": range(decoded.header.observation_count),
+        # Compatibilidad con consumidores anteriores: son los enteros sin
+        # escalar de los canales 24 y 25, ahora también expuestos con alias.
         "auxiliary_channel_1": decoded.auxiliary_channel_1,
         "auxiliary_channel_2": decoded.auxiliary_channel_2,
     }
